@@ -2,21 +2,194 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>星星的个人主页</title>
+  <title>AI任务管理与信息整理系统（简版Demo）</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { font-family: sans-serif; text-align: center; margin-top: 80px; background: #f9f9f9;}
-    h1 { color: #007acc; }
-    .card { display: inline-block; background: #fff; padding: 2em 4em; border-radius: 12px; box-shadow: 0 2px 12px #eee;}
-    a { color: #007acc; text-decoration: none;}
+    body { font-family: system-ui, sans-serif; background: #f6f8fa; margin: 0; padding: 0; }
+    .container { max-width: 800px; margin: 40px auto; padding: 2em; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px #ddd; }
+    h1 { color: #007acc; text-align: center; }
+    section { margin: 2em 0; }
+    label { font-weight: bold; }
+    input, select, textarea { margin-top: 4px; margin-bottom: 12px; padding: 0.5em; width: 100%; border: 1px solid #ccc; border-radius: 4px; }
+    button { background: #007acc; color: #fff; border: none; padding: 0.7em 1.5em; margin-top: 8px; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #005fa3; }
+    .tasks { display: flex; flex-wrap: wrap; gap: 1.5em; justify-content: space-between; }
+    .quadrant { flex: 1 1 45%; background: #f9f9f9; padding: 1em; border-radius: 8px; margin-bottom: 1em; min-width: 240px; }
+    .quadrant h3 { margin-top: 0; }
+    ul { padding-left: 1.2em; }
+    .info-list { list-style: none; padding: 0; }
+    .info-card {
+      background: #f5faff;
+      border-left: 4px solid #007acc;
+      padding: 1em;
+      margin-bottom: 1em;
+      border-radius: 6px;
+    }
+    .tag { background: #e0f2ff; color: #007acc; border-radius: 3px; padding: 0 6px; font-size: 0.9em; margin-right: 6px; }
+    .link { color: #007acc; text-decoration: underline; word-break: break-all; }
+    @media (max-width: 900px) {
+      .tasks { flex-direction: column; }
+      .quadrant { min-width: unset; }
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>欢迎来到星星的个人主页！</h1>
-    <p>这里是我的第一个GitHub Pages网站🎉</p>
-    <p>我是一名热爱设计、喜欢旅行的enpf女孩</p>
-    <p><a href="https://pages.github.com/" target="_blank">了解更多 GitHub Pages &rarr;</a></p>
+  <div class="container">
+    <h1>AI任务管理与信息整理系统（简版Demo）</h1>
+    
+    <!-- 聊天记录导入 -->
+    <section>
+      <h2>1. 聊天记录导入（文本文件）</h2>
+      <input type="file" id="chatInput" accept=".txt,.html" />
+      <button onclick="importChats()">导入聊天记录</button>
+      <p id="chatStatus"></p>
+    </section>
+
+    <!-- 信息聚合 -->
+    <section>
+      <h2>2. 信息聚合卡片</h2>
+      <form id="infoForm" onsubmit="addInfoCard(event)">
+        <label>标题</label>
+        <input required id="infoTitle">
+        <label>原文链接</label>
+        <input required type="url" id="infoLink">
+        <label>推荐人</label>
+        <input id="infoRecommender">
+        <label>平台类型</label>
+        <select id="infoPlatform">
+          <option value="公众号">公众号</option>
+          <option value="视频号">视频号</option>
+          <option value="小红书">小红书</option>
+          <option value="其他">其他</option>
+        </select>
+        <label>摘要</label>
+        <textarea id="infoSummary"></textarea>
+        <label>标签（英文逗号分隔）</label>
+        <input id="infoTags">
+        <button type="submit">添加精华卡片</button>
+      </form>
+      <ul class="info-list" id="infoList"></ul>
+    </section>
+
+    <!-- 任务四象限 -->
+    <section>
+      <h2>3. 任务四象限</h2>
+      <form id="taskForm" onsubmit="addTask(event)">
+        <label>任务内容</label>
+        <input required id="taskInput">
+        <label>象限</label>
+        <select id="taskQuadrant">
+          <option value="q1">重要且紧急</option>
+          <option value="q2">重要不紧急</option>
+          <option value="q3">不重要但紧急</option>
+          <option value="q4">不重要不紧急</option>
+        </select>
+        <button type="submit">添加任务</button>
+      </form>
+      <div class="tasks">
+        <div class="quadrant">
+          <h3>重要且紧急</h3>
+          <ul id="q1"></ul>
+        </div>
+        <div class="quadrant">
+          <h3>重要不紧急</h3>
+          <ul id="q2"></ul>
+        </div>
+        <div class="quadrant">
+          <h3>不重要但紧急</h3>
+          <ul id="q3"></ul>
+        </div>
+        <div class="quadrant">
+          <h3>不重要不紧急</h3>
+          <ul id="q4"></ul>
+        </div>
+      </div>
+    </section>
   </div>
+  <script>
+    // 聊天记录导入模拟
+    function importChats() {
+      const input = document.getElementById('chatInput');
+      const status = document.getElementById('chatStatus');
+      if (!input.files.length) {
+        status.textContent = '请先选择文件';
+        return;
+      }
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        // 这里只是演示，实际可以解析文本内容
+        status.textContent = `已导入: ${file.name}（${file.size}字节）`;
+      };
+      reader.readAsText(file);
+    }
+
+    // 信息卡片功能
+    let infoCards = JSON.parse(localStorage.getItem('infoCards') || '[]');
+    function renderInfoCards() {
+      const list = document.getElementById('infoList');
+      list.innerHTML = '';
+      infoCards.forEach((card, i) => {
+        let tags = card.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+        list.innerHTML += `<li class="info-card">
+          <div><strong>${card.title}</strong> <span class="tag">${card.platform}</span></div>
+          <div>推荐人：${card.recommender || '—'}</div>
+          <div>链接：<a class="link" href="${card.link}" target="_blank">${card.link}</a></div>
+          <div>摘要：${card.summary || '—'}</div>
+          <div>标签：${tags || '—'}</div>
+          <button onclick="delInfoCard(${i})" style="margin-top:8px;background:#f44;">删除</button>
+        </li>`;
+      });
+    }
+    function addInfoCard(e) {
+      e.preventDefault();
+      infoCards.push({
+        title: document.getElementById('infoTitle').value,
+        link: document.getElementById('infoLink').value,
+        recommender: document.getElementById('infoRecommender').value,
+        platform: document.getElementById('infoPlatform').value,
+        summary: document.getElementById('infoSummary').value,
+        tags: document.getElementById('infoTags').value.split(',').map(t=>t.trim()).filter(Boolean)
+      });
+      localStorage.setItem('infoCards', JSON.stringify(infoCards));
+      renderInfoCards();
+      e.target.reset();
+    }
+    function delInfoCard(i) {
+      if (confirm('确认删除这条卡片？')) {
+        infoCards.splice(i,1);
+        localStorage.setItem('infoCards', JSON.stringify(infoCards));
+        renderInfoCards();
+      }
+    }
+    renderInfoCards();
+
+    // 任务四象限功能
+    let tasks = JSON.parse(localStorage.getItem('tasks') || '{}');
+    function renderTasks() {
+      ['q1','q2','q3','q4'].forEach(q=>{
+        const ul = document.getElementById(q);
+        ul.innerHTML = '';
+        (tasks[q]||[]).forEach((t,i) => {
+          ul.innerHTML += `<li>${t} <button onclick="delTask('${q}',${i})" style="font-size:0.9em;">完成</button></li>`;
+        });
+      });
+    }
+    function addTask(e) {
+      e.preventDefault();
+      const q = document.getElementById('taskQuadrant').value;
+      tasks[q] = tasks[q] || [];
+      tasks[q].push(document.getElementById('taskInput').value);
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+      renderTasks();
+      e.target.reset();
+    }
+    function delTask(q,i) {
+      tasks[q].splice(i,1);
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+      renderTasks();
+    }
+    renderTasks();
+  </script>
 </body>
 </html>
